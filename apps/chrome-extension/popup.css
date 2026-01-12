@@ -1,0 +1,400 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 360px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.container {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.logo {
+  width: 32px;
+  height: 32px;
+}
+
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.section {
+  margin-bottom: 16px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.auth-section {
+  text-align: center;
+  padding: 32px 0;
+}
+
+.auth-message {
+  margin-bottom: 16px;
+  color: #666;
+  font-size: 14px;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btn-icon:hover {
+  background: #f0f0f0;
+}
+
+.recording-mode-selector {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.mode-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+  transition: all 0.2s;
+}
+
+.mode-select-btn:hover {
+  background: #f0f0f0;
+}
+
+.mode-icon {
+  color: #666;
+}
+
+#mode-label {
+  flex: 1;
+  text-align: left;
+}
+
+.chevron {
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.mode-select-btn.open .chevron {
+  transform: rotate(180deg);
+}
+
+.mode-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  overflow: hidden;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #1a1a1a;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.mode-option:hover {
+  background: #f9f9f9;
+}
+
+.mode-option.active {
+  background: #f0f7ff;
+  color: #3b82f6;
+}
+
+.mode-option svg {
+  color: #666;
+}
+
+.device-selector {
+  margin-bottom: 12px;
+}
+
+.device-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+}
+
+.device-icon {
+  color: #666;
+  flex-shrink: 0;
+}
+
+.device-label {
+  flex: 1;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.permission-btn {
+  padding: 4px 12px;
+  background: #fef2f2;
+  border: none;
+  border-radius: 12px;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.permission-btn:hover {
+  background: #fee2e2;
+}
+
+.status-pill {
+  padding: 4px 12px;
+  background: #fef2f2;
+  border: none;
+  border-radius: 12px;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.status-pill.on {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.status-pill.on:hover {
+  background: #dbeafe;
+}
+
+.status-pill:not(.on) {
+  cursor: default;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-primary:active {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #f9f9f9;
+  color: #1a1a1a;
+  border: 1px solid #e5e5e5;
+}
+
+.btn-secondary:hover {
+  background: #f0f0f0;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-large {
+  padding: 14px 20px;
+  font-size: 16px;
+}
+
+.recording-controls {
+  margin-bottom: 16px;
+}
+
+.recording-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fef2f2;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.recording-indicator {
+  width: 12px;
+  height: 12px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+#recording-time {
+  font-weight: 600;
+  font-size: 18px;
+  color: #ef4444;
+  font-variant-numeric: tabular-nums;
+}
+
+.control-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.upload-progress {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #e5e5e5;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #3b82f6;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e5e5;
+  text-align: center;
+}
+
+.footer-link {
+  color: #666;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.footer-link:hover {
+  color: #3b82f6;
+  text-decoration: underline;
+}
