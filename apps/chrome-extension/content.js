@@ -1,142 +1,170 @@
-let recordingIndicator = null;
-let recordingTimer = null;
-let startTime = null;
+let overlayIframe = null;
+let overlayBackdrop = null;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
+    case 'SHOW_OVERLAY':
+      showOverlay();
+      break;
+
+    case 'HIDE_OVERLAY':
+      hideOverlay();
+      break;
+
     case 'RECORDING_STARTED':
-      showRecordingIndicator();
+      notifyOverlay({ type: 'RECORDING_STARTED' });
       break;
     
     case 'RECORDING_STOPPED':
-      hideRecordingIndicator();
+      notifyOverlay({ type: 'RECORDING_STOPPED' });
       break;
     
     case 'UPLOAD_PROGRESS':
-      updateIndicatorProgress(message.progress, message.status);
+      notifyOverlay({
+        type: 'UPLOAD_PROGRESS',
+        progress: message.progress,
+        status: message.status
+      });
       break;
   }
 });
 
-function showRecordingIndicator() {
-  if (recordingIndicator) return;
+window.addEventListener('message', async (event) => {
+  if (event.data.type === 'CAP_CLOSE_OVERLAY') {
+    hideOverlay();
+  } else if (event.data.type === 'CAP_RESIZE' && overlayIframe) {
+    overlayIframe.style.height = `${event.data.height}px`;
+  } else if (event.data.type === 'CAP_REQUEST_PERMISSION') {
+    const { kind, messageId } = event.data;
+    let granted = false;
+    let devices = [];
 
-  recordingIndicator = document.createElement('div');
-  recordingIndicator.id = 'cap-recording-indicator';
-  recordingIndicator.innerHTML = `
-    <style>
-      #cap-recording-indicator {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 2147483647;
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 24px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 14px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-      }
+    try {
+      const constraints = kind === 'camera'
+        ? { video: true, audio: false }
+        : { audio: true, video: false };
       
-      #cap-recording-indicator:hover {
-        transform: scale(1.05);
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream.getTracks().forEach(track => track.stop());
+      granted = true;
+
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      devices = allDevices.filter(d =>
+        kind === 'camera' ? d.kind === 'videoinput' : d.kind === 'audioinput'
+      ).map(d => ({
+        deviceId: d.deviceId,
+        label: d.label,
+        kind: d.kind
+      }));
+    } catch (error) {
+      console.log(`Permission request for ${kind} failed:`, error);
+      granted = false;
+    }
+
+    if (overlayIframe && overlayIframe.contentWindow) {
+      overlayIframe.contentWindow.postMessage({
+        type: 'CAP_PERMISSION_RESPONSE',
+        messageId,
+        granted,
+        devices
+      }, '*');
+    }
+  } else if (event.data.type === 'CAP_ENUMERATE_DEVICES') {
+    try {
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = allDevices.filter(d => d.kind === 'videoinput').map(d => ({
+        deviceId: d.deviceId,
+        label: d.label,
+        kind: d.kind
+      }));
+      const mics = allDevices.filter(d => d.kind === 'audioinput').map(d => ({
+        deviceId: d.deviceId,
+        label: d.label,
+        kind: d.kind
+      }));
+
+      if (overlayIframe && overlayIframe.contentWindow) {
+        overlayIframe.contentWindow.postMessage({
+          type: 'CAP_DEVICES_ENUMERATED',
+          cameras,
+          mics
+        }, '*');
       }
-      
-      .cap-rec-dot {
-        width: 10px;
-        height: 10px;
-        background: #ef4444;
-        border-radius: 50%;
-        animation: cap-pulse 1.5s ease-in-out infinite;
-      }
-      
-      @keyframes cap-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-      
-      .cap-rec-time {
-        font-variant-numeric: tabular-nums;
-        min-width: 45px;
-      }
-      
-      .cap-rec-stop {
-        margin-left: 8px;
-        padding: 4px 12px;
-        background: #ef4444;
-        border: none;
-        border-radius: 12px;
-        color: white;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      
-      .cap-rec-stop:hover {
-        background: #dc2626;
-      }
-    </style>
-    <div class="cap-rec-dot"></div>
-    <span class="cap-rec-time">00:00</span>
-    <button class="cap-rec-stop">Stop</button>
+    } catch (error) {
+      console.log('Failed to enumerate devices:', error);
+    }
+  }
+});
+
+function showOverlay() {
+  if (overlayIframe) return;
+
+  overlayBackdrop = document.createElement('div');
+  overlayBackdrop.id = 'cap-overlay-backdrop';
+  overlayBackdrop.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2147483646;
+    backdrop-filter: blur(4px);
+    animation: cap-fade-in 0.15s ease-out;
   `;
 
-  document.body.appendChild(recordingIndicator);
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes cap-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes cap-slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  `;
+  document.head.appendChild(style);
 
-  const stopBtn = recordingIndicator.querySelector('.cap-rec-stop');
-  stopBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'STOP_RECORDING' });
+  overlayBackdrop.addEventListener('click', () => {
+    hideOverlay();
   });
 
-  startTime = Date.now();
-  startTimer();
+  overlayIframe = document.createElement('iframe');
+  overlayIframe.id = 'cap-overlay-iframe';
+  overlayIframe.src = chrome.runtime.getURL('overlay.html');
+  overlayIframe.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 360px;
+    height: auto;
+    max-height: calc(100vh - 40px);
+    border: none;
+    z-index: 2147483647;
+    pointer-events: auto;
+    animation: cap-slide-in 0.2s ease-out;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  `;
+
+  document.body.appendChild(overlayBackdrop);
+  document.body.appendChild(overlayIframe);
 }
 
-function hideRecordingIndicator() {
-  stopTimer();
-  
-  if (recordingIndicator) {
-    recordingIndicator.remove();
-    recordingIndicator = null;
+function hideOverlay() {
+  if (overlayIframe) {
+    overlayIframe.remove();
+    overlayIframe = null;
+  }
+  if (overlayBackdrop) {
+    overlayBackdrop.remove();
+    overlayBackdrop = null;
   }
 }
 
-function startTimer() {
-  recordingTimer = setInterval(() => {
-    if (!recordingIndicator) return;
-    
-    const elapsed = Date.now() - startTime;
-    const minutes = Math.floor(elapsed / 60000);
-    const seconds = Math.floor((elapsed % 60000) / 1000);
-    
-    const timeElement = recordingIndicator.querySelector('.cap-rec-time');
-    if (timeElement) {
-      timeElement.textContent = 
-        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-  }, 1000);
-}
-
-function stopTimer() {
-  if (recordingTimer) {
-    clearInterval(recordingTimer);
-    recordingTimer = null;
-  }
-}
-
-function updateIndicatorProgress(progress, status) {
-  if (!recordingIndicator) return;
-  
-  const timeElement = recordingIndicator.querySelector('.cap-rec-time');
-  if (timeElement) {
-    timeElement.textContent = `${Math.round(progress)}%`;
+function notifyOverlay(message) {
+  if (overlayIframe && overlayIframe.contentWindow) {
+    overlayIframe.contentWindow.postMessage(message, '*');
   }
 }

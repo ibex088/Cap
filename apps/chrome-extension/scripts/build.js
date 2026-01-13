@@ -19,7 +19,8 @@ const buildOptions = {
     popup: path.join(rootDir, 'popup.js'),
     content: path.join(rootDir, 'content.js'),
     offscreen: path.join(rootDir, 'offscreen.js'),
-    permission: path.join(rootDir, 'permission.js')
+    permission: path.join(rootDir, 'permission.js'),
+    overlay: path.join(rootDir, 'overlay.js')
   },
   bundle: true,
   outdir: distDir,
@@ -37,6 +38,7 @@ async function copyStaticFiles() {
     'popup.css',
     'offscreen.html',
     'permission.html',
+    'overlay.html',
     'shared-popup.js'
   ];
 

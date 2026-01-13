@@ -15,6 +15,31 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('Cap extension installed');
 });
 
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    if (!tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+      try {
+        await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_OVERLAY' });
+      } catch (error) {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        });
+
+        setTimeout(async () => {
+          try {
+            await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_OVERLAY' });
+          } catch (err) {
+            console.error('Failed to show overlay after injection:', err);
+          }
+        }, 100);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to show overlay:', error);
+  }
+});
+
 chrome.commands.onCommand.addListener((command) => {
   if (command === 'start-recording') {
     toggleRecording();
@@ -345,18 +370,39 @@ async function completeMultipartUpload(videoId, uploadId, parts) {
   return await response.json();
 }
 
-function notifyRecordingStarted() {
-  chrome.runtime.sendMessage({ type: 'RECORDING_STARTED' });
+async function notifyRecordingStarted() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.tabs.sendMessage(tab.id, { type: 'RECORDING_STARTED' });
+    }
+  } catch (error) {
+    console.error('Failed to notify recording started:', error);
+  }
 }
 
-function notifyRecordingStopped() {
-  chrome.runtime.sendMessage({ type: 'RECORDING_STOPPED' });
+async function notifyRecordingStopped() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.tabs.sendMessage(tab.id, { type: 'RECORDING_STOPPED' });
+    }
+  } catch (error) {
+    console.error('Failed to notify recording stopped:', error);
+  }
 }
 
-function notifyUploadProgress(progress, status) {
-  chrome.runtime.sendMessage({
-    type: 'UPLOAD_PROGRESS',
-    progress,
-    status
-  });
+async function notifyUploadProgress(progress, status) {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab?.id) {
+      await chrome.tabs.sendMessage(tab.id, {
+        type: 'UPLOAD_PROGRESS',
+        progress,
+        status
+      });
+    }
+  } catch (error) {
+    console.error('Failed to notify upload progress:', error);
+  }
 }
