@@ -162,40 +162,31 @@ async function handlePauseRecording() {
 
 async function getStreamId(mode) {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    let sources;
     
-    let constraints;
-    if (mode === 'tab') {
-      constraints = {
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'tab',
-            chromeMediaSourceId: tab.id.toString()
-          }
-        }
-      };
-    } else if (mode === 'screen') {
-      constraints = {
-        audio: false,
-        video: {
-          mandatory: {
-            chromeMediaSource: 'desktop'
-          }
-        }
-      };
+    if (mode === 'fullscreen' || mode === 'screen') {
+      sources = ['screen', 'window'];
+    } else if (mode === 'window') {
+      sources = ['window'];
+    } else if (mode === 'tab') {
+      sources = ['tab'];
+    } else if (mode === 'camera') {
+      return 'camera';
     } else {
-      return null;
+      sources = ['screen', 'window', 'tab'];
     }
 
     const streamId = await new Promise((resolve, reject) => {
-      chrome.tabCapture.getMediaStreamId(constraints, (streamId) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(streamId);
+      chrome.desktopCapture.chooseDesktopMedia(
+        sources,
+        (streamId) => {
+          if (!streamId) {
+            reject(new Error('User cancelled screen selection'));
+          } else {
+            resolve(streamId);
+          }
         }
-      });
+      );
     });
 
     return streamId;

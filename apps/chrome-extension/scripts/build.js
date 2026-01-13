@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const isWatch = process.argv.includes('--watch');
 const rootDir = path.resolve(__dirname, '..');
 const distDir = path.join(rootDir, 'dist');
 
@@ -19,15 +18,16 @@ const buildOptions = {
     background: path.join(rootDir, 'background.js'),
     popup: path.join(rootDir, 'popup.js'),
     content: path.join(rootDir, 'content.js'),
-    offscreen: path.join(rootDir, 'offscreen.js')
+    offscreen: path.join(rootDir, 'offscreen.js'),
+    permission: path.join(rootDir, 'permission.js')
   },
   bundle: true,
   outdir: distDir,
-  format: 'esm',
+  format: 'iife',
   platform: 'browser',
   target: 'chrome100',
-  minify: !isWatch,
-  sourcemap: isWatch ? 'inline' : false
+  minify: false,
+  sourcemap: false
 };
 
 async function copyStaticFiles() {
@@ -35,7 +35,8 @@ async function copyStaticFiles() {
     'manifest.json',
     'popup.html',
     'popup.css',
-    'offscreen.html'
+    'offscreen.html',
+    'permission.html'
   ];
 
   for (const file of staticFiles) {
@@ -81,26 +82,4 @@ async function build() {
   }
 }
 
-if (isWatch) {
-  console.log('Watching for changes...');
-  
-  const ctx = await esbuild.context(buildOptions);
-  await ctx.watch();
-  
-  const chokidar = await import('chokidar');
-  const watcher = chokidar.watch([
-    path.join(rootDir, '*.html'),
-    path.join(rootDir, '*.css'),
-    path.join(rootDir, '*.json'),
-    path.join(rootDir, 'icons/**/*')
-  ], {
-    ignoreInitial: true
-  });
-  
-  watcher.on('change', async (filePath) => {
-    console.log(`File changed: ${path.basename(filePath)}`);
-    await copyStaticFiles();
-  });
-} else {
-  build();
-}
+build();

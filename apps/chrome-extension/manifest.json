@@ -8,7 +8,8 @@
     "tabs",
     "activeTab",
     "scripting",
-    "offscreen"
+    "offscreen",
+    "desktopCapture"
   ],
   "host_permissions": [
     "https://*/*",
@@ -42,7 +43,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["offscreen.html"],
+      "resources": ["offscreen.html", "permission.html", "permission.js"],
       "matches": ["<all_urls>"]
     }
   ],

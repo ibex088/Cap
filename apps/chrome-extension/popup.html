@@ -78,28 +78,57 @@
       </div>
 
       <div class="device-selector">
-        <div class="device-row">
-          <svg class="device-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-            <circle cx="12" cy="13" r="4"></circle>
-          </svg>
-          <span class="device-label">No Camera</span>
-          <button class="permission-btn hidden" id="camera-permission-btn">Request permission</button>
+        <div class="device-select-wrapper">
+          <button class="device-select-btn" id="camera-select-btn">
+            <svg class="device-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <span id="camera-label">No Camera</span>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            </button>
           <button class="status-pill" id="camera-status">Off</button>
+        </div>
+        <div class="device-dropdown hidden" id="camera-dropdown">
+          <button class="device-option active" data-camera="no-camera">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 1l22 22M7 7a7 7 0 0 0 10 10M12 5a7 7 0 0 1 7 7v.5"></path>
+            </svg>
+            <span>No Camera</span>
+          </button>
         </div>
       </div>
 
       <div class="device-selector">
-        <div class="device-row">
-          <svg class="device-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="23"></line>
-            <line x1="8" y1="23" x2="16" y2="23"></line>
-          </svg>
-          <span class="device-label">No Microphone</span>
-          <button class="permission-btn hidden" id="mic-permission-btn">Request permission</button>
+        <div class="device-select-wrapper">
+          <button class="device-select-btn" id="mic-select-btn">
+            <svg class="device-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+            <span id="mic-label">No Microphone</span>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+            </button>
           <button class="status-pill" id="mic-status">Off</button>
+        </div>
+        <div class="device-dropdown hidden" id="mic-dropdown">
+          <button class="device-option active" data-mic="no-microphone">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 1l22 22M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+              <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="8" y1="23" x2="16" y2="23"></line>
+            </svg>
+            <span>No Microphone</span>
+          </button>
         </div>
       </div>
 
@@ -148,6 +177,6 @@
     </div>
   </div>
 
-  <script src="popup.js" type="module"></script>
+  <script src="popup.js"></script>
 </body>
 </html>

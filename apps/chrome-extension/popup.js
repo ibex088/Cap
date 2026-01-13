@@ -1,3 +1,5 @@
+console.log('popup.js loading...');
+
 const API_BASE_URL = 'https://cap.so';
 
 let currentMode = 'screen';
@@ -17,8 +19,12 @@ const elements = {
   modeDropdown: document.getElementById('mode-dropdown'),
   cameraStatus: document.getElementById('camera-status'),
   micStatus: document.getElementById('mic-status'),
-  cameraPermissionBtn: document.getElementById('camera-permission-btn'),
-  micPermissionBtn: document.getElementById('mic-permission-btn'),
+  cameraSelectBtn: document.getElementById('camera-select-btn'),
+  cameraLabel: document.getElementById('camera-label'),
+  cameraDropdown: document.getElementById('camera-dropdown'),
+  micSelectBtn: document.getElementById('mic-select-btn'),
+  micLabel: document.getElementById('mic-label'),
+  micDropdown: document.getElementById('mic-dropdown'),
   startRecordingBtn: document.getElementById('start-recording-btn'),
   recordingControls: document.getElementById('recording-controls'),
   pauseBtn: document.getElementById('pause-btn'),
@@ -30,14 +36,313 @@ const elements = {
   progressFill: document.getElementById('progress-fill')
 };
 
-let micEnabled = false;
-let cameraEnabled = false;
+let selectedCameraId = null;
+let selectedMicId = null;
+let availableCameras = [];
+let availableMics = [];
+let cameraPermissionState = 'prompt';
+let micPermissionState = 'prompt';
+
+const NO_CAMERA_VALUE = 'no-camera';
+const NO_MIC_VALUE = 'no-microphone';
+
+async function checkMediaPermission(kind) {
+  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+    return 'unsupported';
+  }
+
+  try {
+    const permission = await navigator.permissions.query({ name: kind });
+    console.log('permissionnnnnnn: ', permission);
+    return permission.state;
+  } catch (error) {
+    console.log(`Permission API not supported for ${kind}:`, error);
+    return 'unsupported';
+  }
+}
+
+async function setupPermissionListener(kind) {
+  if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+    return;
+  }
+
+  try {
+    const permission = await navigator.permissions.query({ name: kind });
+
+    permission.onchange = () => {
+      if (kind === 'camera') {
+        cameraPermissionState = permission.state;
+      } else {
+        micPermissionState = permission.state;
+      }
+      updatePermissionUI();
+    };
+  } catch (error) {
+    console.log(`Could not setup permission listener for ${kind}`);
+  }
+}
+
+async function requestMediaPermission(kind) {
+  try {
+    const constraints = kind === 'camera'
+      ? { video: true, audio: true }
+      : { audio: true, video: true };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    stream.getTracks().forEach(track => track.stop());
+
+    if (kind === 'camera') {
+      cameraPermissionState = 'granted';
+    } else {
+      micPermissionState = 'granted';
+    }
+
+    await refreshPermissionsAndDevices();
+    return true;
+  } catch (error) {
+    console.log('errorrrrrrrrr: ', error);
+    if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
+      console.log(`${kind} permission failed in popup, trying new tab...`);
+      return await requestPermissionInNewTab(kind);
+    }
+    console.error(`${kind} permission request error:`, error);
+    return false;
+  }
+}
+
+async function requestPermissionInNewTab(kind) {
+  try {
+    const permissionUrl = chrome.runtime.getURL('permission.html') + `?type=${kind}`;
+    const tab = await chrome.tabs.create({ url: permissionUrl, active: true });
+
+    return new Promise((resolve) => {
+      const messageListener = (message, sender) => {
+        if (sender.tab?.id === tab.id && message.type === 'PERMISSION_RESULT') {
+          chrome.runtime.onMessage.removeListener(messageListener);
+          // chrome.tabs.remove(tab.id).catch(() => { });
+
+          if (message.granted) {
+            if (kind === 'camera') {
+              cameraPermissionState = 'granted';
+            } else {
+              micPermissionState = 'granted';
+            }
+            refreshPermissionsAndDevices().then(() => resolve(true));
+          } else {
+            if (kind === 'camera') {
+              cameraPermissionState = 'denied';
+            } else {
+              micPermissionState = 'denied';
+            }
+            updatePermissionUI();
+            resolve(false);
+          }
+        }
+      };
+
+      chrome.runtime.onMessage.addListener(messageListener);
+
+      setTimeout(() => {
+        chrome.runtime.onMessage.removeListener(messageListener);
+        resolve(false);
+      }, 60000);
+    });
+  } catch (error) {
+    console.error(`${kind} permission request in new tab failed:`, error);
+    return false;
+  }
+}
+
+async function enumerateDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    availableCameras = devices.filter(d => d.kind === 'videoinput' && d.deviceId);
+    availableMics = devices.filter(d => d.kind === 'audioinput' && d.deviceId);
+
+    console.log('Available cameras:', availableCameras);
+    console.log('Available microphones:', availableMics);
+
+    if (availableCameras.length > 0 && !availableCameras[0].label) {
+      console.log('Device IDs present but labels empty - permission may not be fully granted yet');
+    }
+
+    updateDeviceSelectors();
+  } catch (error) {
+    console.error('Failed to enumerate devices:', error);
+  }
+}
+
+async function refreshPermissionsAndDevices() {
+  cameraPermissionState = await checkMediaPermission('camera');
+  micPermissionState = await checkMediaPermission('microphone');
+
+  await setupPermissionListener('camera');
+  await setupPermissionListener('microphone');
+
+  await enumerateDevices();
+  updatePermissionUI();
+}
+
+function updatePermissionUI() {
+  const shouldRequestCamera = cameraPermissionState !== 'granted' && cameraPermissionState !== 'unsupported';
+  const shouldRequestMic = micPermissionState !== 'granted' && micPermissionState !== 'unsupported';
+
+  if (elements.cameraSelectBtn) {
+    elements.cameraSelectBtn.disabled = shouldRequestCamera;
+  }
+
+  if (elements.micSelectBtn) {
+    elements.micSelectBtn.disabled = shouldRequestMic;
+  }
+
+  updateStatusPills();
+}
+
+function updateStatusPills() {
+  const shouldRequestCamera = cameraPermissionState !== 'granted' && cameraPermissionState !== 'unsupported';
+  const shouldRequestMic = micPermissionState !== 'granted' && micPermissionState !== 'unsupported';
+
+  const cameraEnabled = selectedCameraId !== null && selectedCameraId !== NO_CAMERA_VALUE;
+  const micEnabled = selectedMicId !== null && selectedMicId !== NO_MIC_VALUE;
+
+  if (shouldRequestCamera) {
+    elements.cameraStatus.textContent = 'Request permission';
+    elements.cameraStatus.classList.remove('on');
+    elements.cameraStatus.classList.add('request-permission');
+    elements.cameraStatus.disabled = false;
+  } else if (cameraEnabled) {
+    elements.cameraStatus.textContent = 'On';
+    elements.cameraStatus.classList.add('on');
+    elements.cameraStatus.classList.remove('request-permission');
+    elements.cameraStatus.disabled = false;
+  } else {
+    elements.cameraStatus.textContent = 'Off';
+    elements.cameraStatus.classList.remove('on', 'request-permission');
+    elements.cameraStatus.disabled = true;
+  }
+
+  if (shouldRequestMic) {
+    elements.micStatus.textContent = 'Request permission';
+    elements.micStatus.classList.remove('on');
+    elements.micStatus.classList.add('request-permission');
+    elements.micStatus.disabled = false;
+  } else if (micEnabled) {
+    elements.micStatus.textContent = 'On';
+    elements.micStatus.classList.add('on');
+    elements.micStatus.classList.remove('request-permission');
+    elements.micStatus.disabled = false;
+  } else {
+    elements.micStatus.textContent = 'Off';
+    elements.micStatus.classList.remove('on', 'request-permission');
+    elements.micStatus.disabled = true;
+  }
+}
+
+function updateDeviceSelectors() {
+  if (elements.cameraDropdown) {
+    elements.cameraDropdown.innerHTML = `
+      <button class="device-option active" data-camera="${NO_CAMERA_VALUE}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 1l22 22M7 7a7 7 0 0 0 10 10M12 5a7 7 0 0 1 7 7v.5"></path>
+        </svg>
+        <span>No Camera</span>
+      </button>
+    `;
+
+    availableCameras.forEach((camera, index) => {
+      const option = document.createElement('button');
+      option.className = 'device-option';
+      option.setAttribute('data-camera', camera.deviceId);
+      option.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+          <circle cx="12" cy="13" r="4"></circle>
+        </svg>
+        <span>${camera.label || `Camera ${index + 1}`}</span>
+      `;
+      elements.cameraDropdown.appendChild(option);
+    });
+
+    updateCameraLabel();
+  }
+
+  if (elements.micDropdown) {
+    elements.micDropdown.innerHTML = `
+      <button class="device-option active" data-mic="${NO_MIC_VALUE}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 1l22 22M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
+          <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+        <span>No Microphone</span>
+      </button>
+    `;
+
+    availableMics.forEach((mic, index) => {
+      const option = document.createElement('button');
+      option.className = 'device-option';
+      option.setAttribute('data-mic', mic.deviceId);
+      option.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+        <span>${mic.label || `Microphone ${index + 1}`}</span>
+      `;
+      elements.micDropdown.appendChild(option);
+    });
+
+    updateMicLabel();
+  }
+}
+
+function updateCameraLabel() {
+  if (!elements.cameraLabel) return;
+
+  if (!selectedCameraId || selectedCameraId === NO_CAMERA_VALUE) {
+    elements.cameraLabel.textContent = 'No Camera';
+  } else {
+    const camera = availableCameras.find(c => c.deviceId === selectedCameraId);
+    const index = availableCameras.indexOf(camera);
+    elements.cameraLabel.textContent = camera?.label || `Camera ${index + 1}`;
+  }
+
+  document.querySelectorAll('[data-camera]').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-camera') === (selectedCameraId || NO_CAMERA_VALUE)) {
+      btn.classList.add('active');
+    }
+  });
+}
+
+function updateMicLabel() {
+  if (!elements.micLabel) return;
+
+  if (!selectedMicId || selectedMicId === NO_MIC_VALUE) {
+    elements.micLabel.textContent = 'No Microphone';
+  } else {
+    const mic = availableMics.find(m => m.deviceId === selectedMicId);
+    const index = availableMics.indexOf(mic);
+    elements.micLabel.textContent = mic?.label || `Microphone ${index + 1}`;
+  }
+
+  document.querySelectorAll('[data-mic]').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.getAttribute('data-mic') === (selectedMicId || NO_MIC_VALUE)) {
+      btn.classList.add('active');
+    }
+  });
+}
 
 async function init() {
   const authStatus = await checkAuthStatus();
   
   if (authStatus.authenticated) {
     showRecordingSection(authStatus.user);
+    await refreshPermissionsAndDevices();
   } else {
     showAuthSection();
   }
@@ -80,6 +385,8 @@ function showRecordingSection(user) {
 }
 
 function setupEventListeners() {
+  console.log('setupEventListeners called');
+
   elements.signInBtn.addEventListener('click', handleSignIn);
   elements.signOutBtn.addEventListener('click', handleSignOut);
   elements.startRecordingBtn.addEventListener('click', handleStartRecording);
@@ -107,43 +414,105 @@ function setupEventListeners() {
     });
   });
 
-  elements.cameraStatus.addEventListener('click', () => {
+  elements.cameraSelectBtn.addEventListener('click', () => {
+    const isOpen = !elements.cameraDropdown.classList.contains('hidden');
+    elements.cameraDropdown.classList.toggle('hidden');
+    elements.cameraSelectBtn.classList.toggle('open');
+    if (!isOpen) {
+      elements.micDropdown.classList.add('hidden');
+      elements.micSelectBtn.classList.remove('open');
+    }
+  });
+
+  elements.micSelectBtn.addEventListener('click', () => {
+    const isOpen = !elements.micDropdown.classList.contains('hidden');
+    elements.micDropdown.classList.toggle('hidden');
+    elements.micSelectBtn.classList.toggle('open');
+    if (!isOpen) {
+      elements.cameraDropdown.classList.add('hidden');
+      elements.cameraSelectBtn.classList.remove('open');
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-camera]')) {
+      const cameraId = e.target.closest('[data-camera]').getAttribute('data-camera');
+      selectedCameraId = cameraId === NO_CAMERA_VALUE ? null : cameraId;
+      updateCameraLabel();
+      updateStatusPills();
+      elements.cameraDropdown.classList.add('hidden');
+      elements.cameraSelectBtn.classList.remove('open');
+    }
+
+    if (e.target.closest('[data-mic]')) {
+      const micId = e.target.closest('[data-mic]').getAttribute('data-mic');
+      selectedMicId = micId === NO_MIC_VALUE ? null : micId;
+      updateMicLabel();
+      updateStatusPills();
+      elements.micDropdown.classList.add('hidden');
+      elements.micSelectBtn.classList.remove('open');
+    }
+  });
+
+  elements.cameraStatus.addEventListener('click', async (e) => {
+    e.stopPropagation();
+
+    const shouldRequestCamera = cameraPermissionState !== 'granted' && cameraPermissionState !== 'unsupported';
+
+    if (shouldRequestCamera) {
+      const originalText = elements.cameraStatus.textContent;
+      elements.cameraStatus.textContent = 'Requesting...';
+      elements.cameraStatus.disabled = true;
+
+      try {
+        await requestMediaPermission('camera');
+      } catch (error) {
+        console.log('Camera permission request failed or denied');
+      }
+
+      elements.cameraStatus.disabled = false;
+      if (cameraPermissionState !== 'granted') {
+        elements.cameraStatus.textContent = originalText;
+      }
+      return;
+    }
+
+    const cameraEnabled = selectedCameraId !== null && selectedCameraId !== NO_CAMERA_VALUE;
     if (cameraEnabled) {
-      cameraEnabled = false;
-      elements.cameraStatus.textContent = 'Off';
-      elements.cameraStatus.classList.remove('on');
+      selectedCameraId = null;
+      updateCameraLabel();
+      updateStatusPills();
     }
   });
 
-  elements.micStatus.addEventListener('click', () => {
+  elements.micStatus.addEventListener('click', async (e) => {
+    e.stopPropagation();
+
+    const shouldRequestMic = micPermissionState !== 'granted' && micPermissionState !== 'unsupported';
+
+    if (shouldRequestMic) {
+      const originalText = elements.micStatus.textContent;
+      elements.micStatus.textContent = 'Requesting...';
+      elements.micStatus.disabled = true;
+
+      try {
+        await requestMediaPermission('microphone');
+      } catch (error) {
+        console.log('Microphone permission request failed or denied');
+      }
+
+      elements.micStatus.disabled = false;
+      if (micPermissionState !== 'granted') {
+        elements.micStatus.textContent = originalText;
+      }
+      return;
+    }
+
+    const micEnabled = selectedMicId !== null && selectedMicId !== NO_MIC_VALUE;
     if (micEnabled) {
-      micEnabled = false;
-      elements.micStatus.textContent = 'Off';
-      elements.micStatus.classList.remove('on');
-    }
-  });
-
-  elements.cameraPermissionBtn.addEventListener('click', async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
-      cameraEnabled = true;
-      elements.cameraStatus.textContent = 'On';
-      elements.cameraStatus.classList.add('on');
-      elements.cameraPermissionBtn.classList.add('hidden');
-    } catch (error) {
-      alert('Camera permission denied');
-    }
-  });
-
-  elements.micPermissionBtn.addEventListener('click', async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-      micEnabled = true;
-      elements.micStatus.textContent = 'On';
-      elements.micStatus.classList.add('on');
-      elements.micPermissionBtn.classList.add('hidden');
-    } catch (error) {
-      alert('Microphone permission denied');
+      selectedMicId = null;
+      updateMicLabel();
+      updateStatusPills();
     }
   });
 
@@ -152,9 +521,17 @@ function setupEventListeners() {
       elements.modeDropdown.classList.add('hidden');
       elements.modeSelectBtn.classList.remove('open');
     }
+
+    if (!e.target.closest('.device-selector')) {
+      elements.cameraDropdown.classList.add('hidden');
+      elements.cameraSelectBtn.classList.remove('open');
+      elements.micDropdown.classList.add('hidden');
+      elements.micSelectBtn.classList.remove('open');
+    }
   });
 
   chrome.runtime.onMessage.addListener((message) => {
+    console.log('messageeeeeeee: ', message);
     if (message.type === 'RECORDING_STARTED') {
       onRecordingStarted();
     } else if (message.type === 'RECORDING_STOPPED') {
@@ -166,6 +543,7 @@ function setupEventListeners() {
 }
 
 async function handleSignIn() {
+  console.log('API_BASE_URL: ', API_BASE_URL);
   const authUrl = `${API_BASE_URL}/extension/auth`;
   const tab = await chrome.tabs.create({ url: authUrl });
   
@@ -204,10 +582,15 @@ async function handleSignOut() {
 }
 
 async function handleStartRecording() {
+  const micEnabled = selectedMicId !== null && selectedMicId !== NO_MIC_VALUE;
+  const cameraEnabled = selectedCameraId !== null && selectedCameraId !== NO_CAMERA_VALUE;
+
   const config = {
     mode: currentMode,
     micEnabled: micEnabled,
-    cameraEnabled: cameraEnabled
+    cameraEnabled: cameraEnabled,
+    selectedMicId: micEnabled ? selectedMicId : null,
+    selectedCameraId: cameraEnabled ? selectedCameraId : null
   };
 
   try {
@@ -285,4 +668,5 @@ async function checkRecordingState() {
   }
 }
 
+console.log('About to call init()');
 init();

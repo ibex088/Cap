@@ -5,7 +5,6 @@
   "description": "Cap Chrome Extension - Screen recorder for the web",
   "scripts": {
     "build": "node scripts/build.js",
-    "dev": "node scripts/build.js --watch",
     "package": "node scripts/package.js"
   },
   "dependencies": {},
