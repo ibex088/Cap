@@ -82,11 +82,13 @@ async function setupPermissionListener(kind) {
   }
 }
 
+let permissionTabId = null;
+
 async function requestMediaPermission(kind) {
   try {
     const constraints = kind === 'camera'
-      ? { video: true, audio: true }
-      : { audio: true, video: true };
+      ? { video: true, audio: false }
+      : { audio: true, video: false };
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     stream.getTracks().forEach(track => track.stop());
@@ -100,55 +102,43 @@ async function requestMediaPermission(kind) {
     await refreshPermissionsAndDevices();
     return true;
   } catch (error) {
-    console.log('errorrrrrrrrr: ', error);
-    if (error.name === 'NotAllowedError' || error.name === 'SecurityError') {
-      console.log(`${kind} permission failed in popup, trying new tab...`);
-      return await requestPermissionInNewTab(kind);
+    console.log(`${kind} permission request in popup failed:`, error);
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      console.log(`${kind} permission denied in popup, opening permission tab...`);
+      return await openPermissionTab();
     }
     console.error(`${kind} permission request error:`, error);
     return false;
   }
 }
 
-async function requestPermissionInNewTab(kind) {
+async function openPermissionTab() {
   try {
-    const permissionUrl = chrome.runtime.getURL('permission.html') + `?type=${kind}`;
-    const tab = await chrome.tabs.create({ url: permissionUrl, active: true });
-
-    return new Promise((resolve) => {
-      const messageListener = (message, sender) => {
-        if (sender.tab?.id === tab.id && message.type === 'PERMISSION_RESULT') {
-          chrome.runtime.onMessage.removeListener(messageListener);
-          // chrome.tabs.remove(tab.id).catch(() => { });
-
-          if (message.granted) {
-            if (kind === 'camera') {
-              cameraPermissionState = 'granted';
-            } else {
-              micPermissionState = 'granted';
-            }
-            refreshPermissionsAndDevices().then(() => resolve(true));
-          } else {
-            if (kind === 'camera') {
-              cameraPermissionState = 'denied';
-            } else {
-              micPermissionState = 'denied';
-            }
-            updatePermissionUI();
-            resolve(false);
-          }
+    if (permissionTabId) {
+      try {
+        const existingTab = await chrome.tabs.get(permissionTabId);
+        if (existingTab) {
+          await chrome.tabs.update(permissionTabId, { active: true });
+          return true;
         }
-      };
+      } catch (error) {
+        permissionTabId = null;
+      }
+    }
 
-      chrome.runtime.onMessage.addListener(messageListener);
+    const permissionUrl = chrome.runtime.getURL('permission.html');
+    const tab = await chrome.tabs.create({ url: permissionUrl, active: true });
+    permissionTabId = tab.id;
 
-      setTimeout(() => {
-        chrome.runtime.onMessage.removeListener(messageListener);
-        resolve(false);
-      }, 60000);
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      if (tabId === permissionTabId) {
+        permissionTabId = null;
+      }
     });
+
+    return true;
   } catch (error) {
-    console.error(`${kind} permission request in new tab failed:`, error);
+    console.error('Failed to open permission tab:', error);
     return false;
   }
 }
@@ -348,7 +338,36 @@ async function init() {
   }
 
   setupEventListeners();
+  setupStorageListener();
   checkRecordingState();
+}
+
+function setupStorageListener() {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local') {
+      if (changes.cameraPermission) {
+        const newState = changes.cameraPermission.newValue;
+        if (newState === 'granted') {
+          cameraPermissionState = 'granted';
+          refreshPermissionsAndDevices();
+        } else if (newState === 'denied') {
+          cameraPermissionState = 'denied';
+          updatePermissionUI();
+        }
+      }
+
+      if (changes.microphonePermission) {
+        const newState = changes.microphonePermission.newValue;
+        if (newState === 'granted') {
+          micPermissionState = 'granted';
+          refreshPermissionsAndDevices();
+        } else if (newState === 'denied') {
+          micPermissionState = 'denied';
+          updatePermissionUI();
+        }
+      }
+    }
+  });
 }
 
 async function checkAuthStatus() {

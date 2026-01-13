@@ -36,7 +36,8 @@ async function copyStaticFiles() {
     'popup.html',
     'popup.css',
     'offscreen.html',
-    'permission.html'
+    'permission.html',
+    'shared-popup.js'
   ];
 
   for (const file of staticFiles) {
