@@ -17,10 +17,15 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.action.onClicked.addListener(async (tab) => {
   try {
-    if (!tab.url.startsWith('chrome://') && !tab.url.startsWith('chrome-extension://')) {
+    if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
+      chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
+      return;
+    }
+
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_OVERLAY' });
+    } catch (error) {
       try {
-        await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_OVERLAY' });
-      } catch (error) {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
           files: ['content.js']
@@ -31,12 +36,17 @@ chrome.action.onClicked.addListener(async (tab) => {
             await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_OVERLAY' });
           } catch (err) {
             console.error('Failed to show overlay after injection:', err);
+            chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
           }
         }, 100);
+      } catch (scriptError) {
+        console.error('Failed to inject content script:', scriptError);
+        chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
       }
     }
   } catch (error) {
     console.error('Failed to show overlay:', error);
+    chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
   }
 });
 

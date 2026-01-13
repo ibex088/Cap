@@ -216,7 +216,20 @@ function handleDevicesEnumerated(cameras, mics) {
   console.log('Available cameras:', availableCameras);
   console.log('Available microphones:', availableMics);
 
+  if (availableCameras.length > 0 && availableCameras[0].label) {
+    cameraPermissionState = 'granted';
+  } else if (availableCameras.length > 0 && !availableCameras[0].label) {
+    cameraPermissionState = 'prompt';
+  }
+
+  if (availableMics.length > 0 && availableMics[0].label) {
+    micPermissionState = 'granted';
+  } else if (availableMics.length > 0 && !availableMics[0].label) {
+    micPermissionState = 'prompt';
+  }
+
   updateDeviceSelectors();
+  updatePermissionUI();
 }
 
 async function enumerateDevices() {
