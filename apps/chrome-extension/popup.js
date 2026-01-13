@@ -8,6 +8,7 @@ let recordingStartTime = null;
 let timerInterval = null;
 
 const elements = {
+  loadingSection: document.getElementById('loading-section'),
   authSection: document.getElementById('auth-section'),
   recordingSection: document.getElementById('recording-section'),
   signInBtn: document.getElementById('sign-in-btn'),
@@ -330,6 +331,8 @@ function updateMicLabel() {
 async function init() {
   const authStatus = await checkAuthStatus();
   
+  elements.loadingSection.classList.add('hidden');
+
   if (authStatus.authenticated) {
     showRecordingSection(authStatus.user);
     await refreshPermissionsAndDevices();
@@ -563,6 +566,14 @@ function setupEventListeners() {
 
 async function handleSignIn() {
   console.log('API_BASE_URL: ', API_BASE_URL);
+
+  const btnText = elements.signInBtn.querySelector('.btn-text');
+  const btnLoader = elements.signInBtn.querySelector('.btn-loader');
+
+  btnText.classList.add('hidden');
+  btnLoader.classList.remove('hidden');
+  elements.signInBtn.disabled = true;
+
   const authUrl = `${API_BASE_URL}/extension/auth`;
   const tab = await chrome.tabs.create({ url: authUrl });
   
@@ -574,6 +585,10 @@ async function handleSignIn() {
         const authStatus = await checkAuthStatus();
         if (authStatus.authenticated) {
           showRecordingSection(authStatus.user);
+        } else {
+          btnText.classList.remove('hidden');
+          btnLoader.classList.add('hidden');
+          elements.signInBtn.disabled = false;
         }
       }
     } catch (error) {
@@ -581,6 +596,10 @@ async function handleSignIn() {
       const authStatus = await checkAuthStatus();
       if (authStatus.authenticated) {
         showRecordingSection(authStatus.user);
+      } else {
+        btnText.classList.remove('hidden');
+        btnLoader.classList.add('hidden');
+        elements.signInBtn.disabled = false;
       }
     }
   }, 1000);
