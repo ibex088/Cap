@@ -44,9 +44,34 @@ body {
   display: none !important;
 }
 
+#cap-close-overlay {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+#cap-close-overlay:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
 .loading-section {
   text-align: center;
-  padding: 48px 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
 }
 
 .loading-container {
@@ -422,104 +447,9 @@ body {
   }
 }
 
-.btn-secondary {
-  background: #f9f9f9;
-  color: #1a1a1a;
-  border: 1px solid #e5e5e5;
-}
-
-.btn-secondary:hover {
-  background: #f0f0f0;
-}
-
-.btn-danger {
-  background: #ef4444;
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
-}
-
 .btn-large {
   padding: 14px 20px;
   font-size: 16px;
-}
-
-.recording-controls {
-  margin-bottom: 16px;
-}
-
-.recording-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: #fef2f2;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.recording-indicator {
-  width: 12px;
-  height: 12px;
-  background: #ef4444;
-  border-radius: 50%;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-#recording-time {
-  font-weight: 600;
-  font-size: 18px;
-  color: #ef4444;
-  font-variant-numeric: tabular-nums;
-}
-
-.control-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.upload-progress {
-  margin-top: 16px;
-  padding: 16px;
-  background: #f9f9f9;
-  border-radius: 8px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #666;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 6px;
-  background: #e5e5e5;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #3b82f6;
-  border-radius: 3px;
-  transition: width 0.3s ease;
-  width: 0%;
 }
 
 .footer {

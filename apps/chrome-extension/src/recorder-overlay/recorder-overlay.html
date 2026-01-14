@@ -5,27 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cap Recorder</title>
   <link rel="stylesheet" href="../shared/recorder.css">
-  <style>
-    #cap-close-overlay {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: rgba(0, 0, 0, 0.05);
-      border: none;
-      color: #666;
-      cursor: pointer;
-      padding: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px;
-      transition: background 0.2s;
-      z-index: 10;
-    }
-    #cap-close-overlay:hover {
-      background: rgba(0, 0, 0, 0.1);
-    }
-  </style>
 </head>
 <body>
   <button id="cap-close-overlay">
@@ -189,7 +168,7 @@
         </button>
         </div>
 
-      <div class="footer">
+      <div class="footer hidden">
         <a href="https://cap.so" target="_blank" class="footer-link">Open Dashboard</a>
       </div>
     </div>
