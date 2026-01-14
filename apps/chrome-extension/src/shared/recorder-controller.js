@@ -11,6 +11,7 @@ class RecorderController {
     this.availableMics = [];
     this.cameraPermissionState = 'prompt';
     this.micPermissionState = 'prompt';
+    this.cameraPreview = null;
     
     this.elements = {
       cameraStatus: document.getElementById('camera-status'),
@@ -301,6 +302,7 @@ class RecorderController {
         this.updateStatusPills();
         this.elements.cameraDropdown.classList.add('hidden');
         this.elements.cameraSelectBtn.classList.remove('open');
+        this.handleCameraPreview();
       }
 
       if (e.target.closest('[data-mic]')) {
@@ -525,6 +527,34 @@ class RecorderController {
         window.close();
       });
     }
+  }
+
+  async handleCameraPreview() {
+    if (!this.selectedCameraId) {
+      if (this.cameraPreview) {
+        this.cameraPreview.close();
+        this.cameraPreview = null;
+      }
+      return;
+    }
+
+    if (typeof CameraPreview === 'undefined') {
+      console.warn('CameraPreview class not loaded');
+      return;
+    }
+
+    if (!this.cameraPreview) {
+      this.cameraPreview = new CameraPreview({
+        onClose: () => {
+          this.selectedCameraId = null;
+          this.updateCameraLabel();
+          this.updateStatusPills();
+          this.cameraPreview = null;
+        }
+      });
+    }
+
+    await this.cameraPreview.show(this.selectedCameraId);
   }
 
   async init() {

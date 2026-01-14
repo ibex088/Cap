@@ -1,4 +1,4 @@
-console.log('recorder-overlay-init.js loading...');
+
 
 const recorderController = new RecorderController();
 
@@ -37,6 +37,10 @@ window.addEventListener('message', (event) => {
 
     recorderController.updateDeviceSelectors();
     recorderController.updatePermissionUI();
+  } else if (event.data.type === 'CAP_CAMERA_PREVIEW_CLOSED') {
+    recorderController.selectedCameraId = null;
+    recorderController.updateCameraLabel();
+    recorderController.updateStatusPills();
   }
 });
 
@@ -89,6 +93,14 @@ recorderController.requestMediaPermission = async function (kind) {
 
 recorderController.enumerateDevices = async function () {
   window.parent.postMessage({ type: 'CAP_ENUMERATE_DEVICES' }, '*');
+};
+
+recorderController.handleCameraPreview = async function () {
+  
+  window.parent.postMessage({
+    type: 'CAP_CAMERA_PREVIEW',
+    cameraId: this.selectedCameraId
+  }, '*');
 };
 
 function updateIframeHeight() {

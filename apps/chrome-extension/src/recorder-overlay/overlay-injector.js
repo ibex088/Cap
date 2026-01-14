@@ -57,7 +57,7 @@ window.addEventListener('message', async (event) => {
         kind: d.kind
       }));
     } catch (error) {
-      console.log(`Permission request for ${kind} failed:`, error);
+      
       granted = false;
     }
 
@@ -91,8 +91,11 @@ window.addEventListener('message', async (event) => {
         }, '*');
       }
     } catch (error) {
-      console.log('Failed to enumerate devices:', error);
+      
     }
+  } else if (event.data.type === 'CAP_CAMERA_PREVIEW') {
+    
+    handleCameraPreview(event.data.cameraId);
   }
 });
 
@@ -153,6 +156,11 @@ function showOverlay() {
 }
 
 function hideOverlay() {
+  window.postMessage({
+    type: 'CAP_CAMERA_PREVIEW_COMMAND',
+    cameraId: null
+  }, '*');
+
   if (overlayIframe) {
     overlayIframe.remove();
     overlayIframe = null;
@@ -168,3 +176,80 @@ function notifyOverlay(message) {
     overlayIframe.contentWindow.postMessage(message, '*');
   }
 }
+
+let cameraPreviewScriptLoaded = false;
+
+async function loadCameraPreviewScript() {
+  if (cameraPreviewScriptLoaded) {
+    
+    return;
+  }
+
+  
+
+  return new Promise((resolve, reject) => {
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.href = chrome.runtime.getURL('src/shared/camera-preview.css');
+    document.head.appendChild(cssLink);
+    
+
+    const readyHandler = () => {
+      
+      window.removeEventListener('cap-camera-preview-ready', readyHandler);
+      cameraPreviewScriptLoaded = true;
+      resolve();
+    };
+
+    window.addEventListener('cap-camera-preview-ready', readyHandler);
+
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('src/shared/camera-preview.js');
+    script.onerror = (error) => {
+      
+      window.removeEventListener('cap-camera-preview-ready', readyHandler);
+      reject(error);
+    };
+    document.head.appendChild(script);
+    
+
+    setTimeout(() => {
+      window.removeEventListener('cap-camera-preview-ready', readyHandler);
+      reject(new Error('Camera preview script load timeout'));
+    }, 5000);
+  });
+}
+
+async function handleCameraPreview(cameraId) {
+  try {
+    
+    
+    if (!cameraPreviewScriptLoaded) {
+      
+      await loadCameraPreviewScript();
+      
+    } else {
+      
+    }
+
+    
+    window.postMessage({
+      type: 'CAP_CAMERA_PREVIEW_COMMAND',
+      cameraId: cameraId
+    }, '*');
+    
+    
+  } catch (error) {
+    
+  }
+}
+
+window.addEventListener('message', (event) => {
+  if (event.data.type === 'CAP_CAMERA_PREVIEW_CLOSED' && overlayIframe && overlayIframe.contentWindow) {
+    overlayIframe.contentWindow.postMessage({
+      type: 'CAP_CAMERA_PREVIEW_CLOSED'
+    }, '*');
+  } else if (event.data.type === 'CAP_CAMERA_PREVIEW_ERROR') {
+    
+  }
+});

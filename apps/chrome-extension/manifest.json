@@ -48,6 +48,8 @@
         "src/recorder-page/recorder-page-init.js",
         "src/shared/recorder.css",
         "src/shared/recorder-controller.js",
+        "src/shared/camera-preview.css",
+        "src/shared/camera-preview.js",
         "src/recorder-overlay/recorder-overlay.html",
         "src/recorder-overlay/recorder-overlay-init.js",
         "src/assets/icons/icon-48.png"
