@@ -16,7 +16,6 @@ if (!fs.existsSync(distDir)) {
 const buildOptions = {
   entryPoints: {
     background: path.join(rootDir, 'background.js'),
-    popup: path.join(rootDir, 'popup.js'),
     content: path.join(rootDir, 'content.js'),
     offscreen: path.join(rootDir, 'offscreen.js'),
     permission: path.join(rootDir, 'permission.js'),
@@ -34,7 +33,6 @@ const buildOptions = {
 async function copyStaticFiles() {
   const staticFiles = [
     'manifest.json',
-    'popup.html',
     'popup.css',
     'offscreen.html',
     'permission.html',
