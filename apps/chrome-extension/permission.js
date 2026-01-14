@@ -1,8 +1,12 @@
 console.log('permission.js loading...');
 
 const API_BASE_URL = 'https://cap.so';
+const loadingSection = document.getElementById('loading-section');
+const authSection = document.getElementById('auth-section');
+const recordingSection = document.getElementById('recording-section');
 const startRecordingBtn = document.getElementById('start-recording-btn');
-const closeBtn = document.getElementById('close-btn');
+const signOutBtn = document.getElementById('sign-out-btn');
+const closeBtn = document.getElementById('cap-close-permission');
 const userName = document.getElementById('user-name');
 const userAvatar = document.getElementById('user-avatar');
 const popupController = new PopupController();
@@ -26,6 +30,22 @@ async function checkAuthStatus() {
   return { authenticated: false };
 }
 
+function showAuthSection() {
+  loadingSection.classList.add('hidden');
+  authSection.classList.remove('hidden');
+  recordingSection.classList.add('hidden');
+}
+
+function showRecordingSection(user) {
+  loadingSection.classList.add('hidden');
+  authSection.classList.add('hidden');
+  recordingSection.classList.remove('hidden');
+
+  if (user) {
+    displayUserInfo(user);
+  }
+}
+
 function displayUserInfo(user) {
   if (userName && userAvatar) {
     userName.textContent = user.name || user.email;
@@ -33,30 +53,26 @@ function displayUserInfo(user) {
   }
 }
 
-function updateStartButton() {
-  const cameraGranted = popupController.cameraPermissionState === 'granted';
-  const micGranted = popupController.micPermissionState === 'granted';
 
-  if (cameraGranted && micGranted) {
-    startRecordingBtn.disabled = false;
-    startRecordingBtn.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-        <circle cx="12" cy="12" r="10"></circle>
-      </svg>
-      Close & Start Recording
-    `;
+async function handleSignOut() {
+  try {
+    await fetch(`${API_BASE_URL}/api/auth/signout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+  } catch (error) {
+    console.error('Sign out failed:', error);
   }
-}
 
-const originalUpdateStatusPills = popupController.updateStatusPills.bind(popupController);
-popupController.updateStatusPills = function () {
-  originalUpdateStatusPills();
-  updateStartButton();
-};
+  await chrome.storage.local.remove(['user']);
+  showAuthSection();
+}
 
 startRecordingBtn.addEventListener('click', () => {
   window.close();
 });
+
+signOutBtn.addEventListener('click', handleSignOut);
 
 closeBtn.addEventListener('click', () => {
   window.close();
@@ -66,7 +82,9 @@ async function init() {
   const authStatus = await checkAuthStatus();
 
   if (authStatus.authenticated) {
-    displayUserInfo(authStatus.user);
+    showRecordingSection(authStatus.user);
+  } else {
+    showAuthSection();
   }
 
   await popupController.init();
