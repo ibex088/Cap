@@ -18,7 +18,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.action.onClicked.addListener(async (tab) => {
   try {
     if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:')) {
-      chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
+      chrome.tabs.create({ url: chrome.runtime.getURL('src/recorder-page/recorder-page.html') });
       return;
     }
 
@@ -28,7 +28,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       try {
         await chrome.scripting.executeScript({
           target: { tabId: tab.id },
-          files: ['content.js']
+          files: ['src/recorder-overlay/overlay-injector.js']
         });
 
         setTimeout(async () => {
@@ -36,17 +36,17 @@ chrome.action.onClicked.addListener(async (tab) => {
             await chrome.tabs.sendMessage(tab.id, { type: 'SHOW_OVERLAY' });
           } catch (err) {
             console.error('Failed to show overlay after injection:', err);
-            chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
+            chrome.tabs.create({ url: chrome.runtime.getURL('src/recorder-page/recorder-page.html') });
           }
         }, 100);
       } catch (scriptError) {
         console.error('Failed to inject content script:', scriptError);
-        chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
+        chrome.tabs.create({ url: chrome.runtime.getURL('src/recorder-page/recorder-page.html') });
       }
     }
   } catch (error) {
     console.error('Failed to show overlay:', error);
-    chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/recorder-page/recorder-page.html') });
   }
 });
 
@@ -113,7 +113,7 @@ async function handleStartRecording(config) {
     }
 
     await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
+      url: 'src/offscreen/offscreen.html',
       reasons: ['USER_MEDIA'],
       justification: 'Recording screen/camera'
     });

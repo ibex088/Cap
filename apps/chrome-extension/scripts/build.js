@@ -1,4 +1,3 @@
-import * as esbuild from 'esbuild';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -7,65 +6,32 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const rootDir = path.resolve(__dirname, '..');
+const srcDir = path.join(rootDir, 'src');
 const distDir = path.join(rootDir, 'dist');
 
-if (!fs.existsSync(distDir)) {
+function cleanDist() {
+  if (fs.existsSync(distDir)) {
+    fs.rmSync(distDir, { recursive: true, force: true });
+  }
   fs.mkdirSync(distDir, { recursive: true });
 }
 
-const buildOptions = {
-  entryPoints: {
-    background: path.join(rootDir, 'background.js'),
-    content: path.join(rootDir, 'content.js'),
-    offscreen: path.join(rootDir, 'offscreen.js'),
-    permission: path.join(rootDir, 'permission.js'),
-    overlay: path.join(rootDir, 'overlay.js')
-  },
-  bundle: true,
-  outdir: distDir,
-  format: 'iife',
-  platform: 'browser',
-  target: 'chrome100',
-  minify: false,
-  sourcemap: false
-};
-
-async function copyStaticFiles() {
-  const staticFiles = [
-    'manifest.json',
-    'popup.css',
-    'popup.js',
-    'offscreen.html',
-    'permission.html',
-    'overlay.html'
-  ];
-
-  for (const file of staticFiles) {
-    const src = path.join(rootDir, file);
-    const dest = path.join(distDir, file);
-    
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, dest);
-      console.log(`Copied ${file}`);
-    }
+function copyDirectory(src, dest) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
   }
 
-  const iconsDir = path.join(rootDir, 'icons');
-  const distIconsDir = path.join(distDir, 'icons');
-  
-  if (fs.existsSync(iconsDir)) {
-    if (!fs.existsSync(distIconsDir)) {
-      fs.mkdirSync(distIconsDir, { recursive: true });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirectory(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
     }
-    
-    const iconFiles = fs.readdirSync(iconsDir);
-    for (const file of iconFiles) {
-      fs.copyFileSync(
-        path.join(iconsDir, file),
-        path.join(distIconsDir, file)
-      );
-    }
-    console.log('Copied icons');
   }
 }
 
@@ -73,8 +39,16 @@ async function build() {
   try {
     console.log('Building extension...');
     
-    await esbuild.build(buildOptions);
-    await copyStaticFiles();
+    cleanDist();
+
+    fs.copyFileSync(
+      path.join(rootDir, 'manifest.json'),
+      path.join(distDir, 'manifest.json')
+    );
+    console.log('Copied manifest.json');
+
+    copyDirectory(srcDir, path.join(distDir, 'src'));
+    console.log('Copied src/ directory');
     
     console.log('Build complete!');
   } catch (error) {

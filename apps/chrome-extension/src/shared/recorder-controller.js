@@ -2,7 +2,7 @@ const NO_CAMERA_VALUE = 'no-camera';
 const NO_MIC_VALUE = 'no-microphone';
 const API_BASE_URL = 'https://cap.so';
 const LOGIN_URL = 'https://cap.so/login';
-class PopupController {
+class RecorderController {
   constructor() {
     this.currentMode = 'screen';
     this.selectedCameraId = null;

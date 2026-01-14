@@ -132,7 +132,7 @@ function showOverlay() {
 
   overlayIframe = document.createElement('iframe');
   overlayIframe.id = 'cap-overlay-iframe';
-  overlayIframe.src = chrome.runtime.getURL('overlay.html');
+  overlayIframe.src = chrome.runtime.getURL('src/recorder-overlay/recorder-overlay.html');
   overlayIframe.style.cssText = `
     position: fixed;
     top: 20px;

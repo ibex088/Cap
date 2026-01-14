@@ -1,6 +1,6 @@
-console.log('overlay.js loading...');
+console.log('recorder-overlay-init.js loading...');
 
-const popupController = new PopupController();
+const recorderController = new RecorderController();
 
 const closeBtn = document.getElementById('cap-close-overlay');
 if (closeBtn) {
@@ -24,23 +24,23 @@ window.addEventListener('message', (event) => {
     const cameras = event.data.cameras || [];
     const mics = event.data.mics || [];
 
-    popupController.availableCameras = cameras;
-    popupController.availableMics = mics;
+    recorderController.availableCameras = cameras;
+    recorderController.availableMics = mics;
 
     if (cameras.length > 0 && cameras[0].label) {
-      popupController.cameraPermissionState = 'granted';
+      recorderController.cameraPermissionState = 'granted';
     }
 
     if (mics.length > 0 && mics[0].label) {
-      popupController.micPermissionState = 'granted';
+      recorderController.micPermissionState = 'granted';
     }
 
-    popupController.updateDeviceSelectors();
-    popupController.updatePermissionUI();
+    recorderController.updateDeviceSelectors();
+    recorderController.updatePermissionUI();
   }
 });
 
-popupController.requestMediaPermission = async function (kind) {
+recorderController.requestMediaPermission = async function (kind) {
   return new Promise((resolve) => {
     const messageId = `permission_${kind}_${Date.now()}`;
 
@@ -87,7 +87,7 @@ popupController.requestMediaPermission = async function (kind) {
   });
 };
 
-popupController.enumerateDevices = async function () {
+recorderController.enumerateDevices = async function () {
   window.parent.postMessage({ type: 'CAP_ENUMERATE_DEVICES' }, '*');
 };
 
@@ -105,7 +105,7 @@ resizeObserver.observe(document.body);
 setTimeout(updateIframeHeight, 100);
 
 async function init() {
-  await popupController.init();
+  await recorderController.init();
 }
 
 init();
