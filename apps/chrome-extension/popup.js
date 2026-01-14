@@ -1,6 +1,7 @@
 const NO_CAMERA_VALUE = 'no-camera';
 const NO_MIC_VALUE = 'no-microphone';
-
+const API_BASE_URL = 'https://cap.so';
+const LOGIN_URL = 'https://cap.so/login';
 class PopupController {
   constructor() {
     this.currentMode = 'screen';
@@ -363,7 +364,178 @@ class PopupController {
     });
   }
 
+  async checkAuthStatus() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/session`, {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const session = await response.json();
+        if (session?.user) {
+          return { authenticated: true, user: session.user };
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    }
+
+    return { authenticated: false };
+  }
+
+  showAuthSection() {
+    const loadingSection = document.getElementById('loading-section');
+    const authSection = document.getElementById('auth-section');
+    const recordingSection = document.getElementById('recording-section');
+    const footer = document.querySelector('.footer');
+
+    loadingSection.classList.add('hidden');
+    authSection.classList.remove('hidden');
+    recordingSection.classList.add('hidden');
+
+    if (footer) {
+      footer.classList.add('hidden');
+    }
+  }
+
+  showRecordingSection(user) {
+    const loadingSection = document.getElementById('loading-section');
+    const authSection = document.getElementById('auth-section');
+    const recordingSection = document.getElementById('recording-section');
+    const footer = document.querySelector('.footer');
+
+    loadingSection.classList.add('hidden');
+    authSection.classList.add('hidden');
+    recordingSection.classList.remove('hidden');
+
+    if (footer) {
+      footer.classList.remove('hidden');
+    }
+
+    if (user) {
+      this.displayUserInfo(user);
+    }
+  }
+
+  displayUserInfo(user) {
+    const userName = document.getElementById('user-name');
+    const userAvatar = document.getElementById('user-avatar');
+
+    if (userName && userAvatar) {
+      userName.textContent = user.name || user.email;
+      userAvatar.textContent = (user.name || user.email).charAt(0).toUpperCase();
+    }
+  }
+
+  async handleSignIn() {
+    const signInBtn = document.getElementById('sign-in-btn');
+    if (!signInBtn) return;
+
+    const btnText = signInBtn.querySelector('.btn-text');
+    const btnLoader = signInBtn.querySelector('.btn-loader');
+
+    if (btnText && btnLoader) {
+      btnText.classList.add('hidden');
+      btnLoader.classList.remove('hidden');
+    }
+    signInBtn.disabled = true;
+
+    const tab = await chrome.tabs.create({ url: LOGIN_URL });
+
+    const checkInterval = setInterval(async () => {
+      try {
+        const currentTab = await chrome.tabs.get(tab.id);
+        if (!currentTab) {
+          clearInterval(checkInterval);
+          const authStatus = await this.checkAuthStatus();
+          if (authStatus.authenticated) {
+            this.showRecordingSection(authStatus.user);
+          } else {
+            if (btnText && btnLoader) {
+              btnText.classList.remove('hidden');
+              btnLoader.classList.add('hidden');
+            }
+            signInBtn.disabled = false;
+          }
+        }
+      } catch (error) {
+        clearInterval(checkInterval);
+        const authStatus = await this.checkAuthStatus();
+        if (authStatus.authenticated) {
+          this.showRecordingSection(authStatus.user);
+        } else {
+          if (btnText && btnLoader) {
+            btnText.classList.remove('hidden');
+            btnLoader.classList.add('hidden');
+          }
+          signInBtn.disabled = false;
+        }
+      }
+    }, 1000);
+  }
+
+  async handleSignOut() {
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/signout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Sign out failed:', error);
+    }
+
+    await chrome.storage.local.remove(['user']);
+    this.showAuthSection();
+
+    const signInBtn = document.getElementById('sign-in-btn');
+    if (signInBtn) {
+      const btnText = signInBtn.querySelector('.btn-text');
+      const btnLoader = signInBtn.querySelector('.btn-loader');
+
+      if (btnText && btnLoader) {
+        btnText.classList.remove('hidden');
+        btnLoader.classList.add('hidden');
+      }
+      signInBtn.disabled = false;
+    }
+  }
+
+  setupAuthListeners() {
+    const signInBtn = document.getElementById('sign-in-btn');
+    const startRecordingBtn = document.getElementById('start-recording-btn');
+    const signOutBtn = document.getElementById('sign-out-btn');
+    const closeBtn = document.getElementById('cap-close-permission');
+
+    if (signInBtn) {
+      signInBtn.addEventListener('click', () => this.handleSignIn());
+    }
+
+    if (startRecordingBtn) {
+      startRecordingBtn.addEventListener('click', () => {
+        window.close();
+      });
+    }
+
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', () => this.handleSignOut());
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        window.close();
+      });
+    }
+  }
+
   async init() {
+    const authStatus = await this.checkAuthStatus();
+
+    if (authStatus.authenticated) {
+      this.showRecordingSection(authStatus.user);
+    } else {
+      this.showAuthSection();
+    }
+
     this.cameraPermissionState = await this.checkMediaPermission('camera');
     this.micPermissionState = await this.checkMediaPermission('microphone');
 
@@ -371,5 +543,6 @@ class PopupController {
     this.updatePermissionUI();
     this.setupDropdownListeners();
     this.setupPermissionListeners();
+    this.setupAuthListeners();
   }
 }
