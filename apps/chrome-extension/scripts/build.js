@@ -34,10 +34,10 @@ async function copyStaticFiles() {
   const staticFiles = [
     'manifest.json',
     'popup.css',
+    'popup.js',
     'offscreen.html',
     'permission.html',
-    'overlay.html',
-    'shared-popup.js'
+    'overlay.html'
   ];
 
   for (const file of staticFiles) {
